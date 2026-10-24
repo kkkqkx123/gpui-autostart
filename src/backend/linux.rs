@@ -54,14 +54,48 @@ fn remove_entry(dir: &Path, config: &AutostartConfig) -> Result<()> {
 }
 
 fn entry_status(dir: &Path, config: &AutostartConfig) -> Result<AutostartStatus> {
-    let enabled = entry_path(dir, config)
-        .try_exists()
-        .map_err(Error::native)?;
-    Ok(if enabled {
-        AutostartStatus::Enabled
-    } else {
+    let path = entry_path(dir, config);
+    if !path.try_exists().map_err(Error::native)? {
+        return Ok(AutostartStatus::Disabled);
+    }
+    let contents = fs::read_to_string(path).map_err(Error::native)?;
+    Ok(desktop_entry_status(&contents))
+}
+
+/// Reports whether a `.desktop` entry actually launches the application.
+///
+/// A present file is not enough: `Hidden=true` removes the entry and
+/// `X-GNOME-Autostart-enabled=false` disables it, so both keys are read from
+/// the `[Desktop Entry]` group.
+fn desktop_entry_status(contents: &str) -> AutostartStatus {
+    let mut in_main_group = false;
+    let mut hidden: Option<bool> = None;
+    let mut autostart_enabled: Option<bool> = None;
+    for line in contents.lines() {
+        let line = line.trim();
+        if line.starts_with('[') {
+            in_main_group = line == "[Desktop Entry]";
+            continue;
+        }
+        if !in_main_group || line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        match key.trim() {
+            "Hidden" => hidden = Some(value.trim() == "true"),
+            "X-GNOME-Autostart-enabled" => {
+                autostart_enabled = Some(value.trim() == "true")
+            }
+            _ => {}
+        }
+    }
+    if hidden == Some(true) || autostart_enabled == Some(false) {
         AutostartStatus::Disabled
-    })
+    } else {
+        AutostartStatus::Enabled
+    }
 }
 
 /// Builds the `.desktop` entry stored in the autostart directory.
@@ -81,6 +115,12 @@ fn desktop_entry(config: &AutostartConfig) -> String {
         escape_value(&config.app_name),
         exec,
     )
+}
+
+/// The identifier this registration is stored under: the `.desktop` file name
+/// without the extension.
+pub(crate) fn registration_id(app_name: &str) -> String {
+    desktop_file_id(app_name)
 }
 
 /// Sanitizes the application name into a Desktop Entry file identifier.
@@ -172,6 +212,37 @@ mod tests {
         let entry = desktop_entry(&config("Mail\\Client\n2", "/opt/mail/mail", &[]));
         assert!(entry.contains("Name=Mail\\\\Client\\n2\n"));
         assert!(entry.contains("Exec=/opt/mail/mail\n"));
+    }
+
+    #[test]
+    fn test_desktop_entry_status() {
+        // The entry this crate writes stays enabled.
+        let entry = config("Mail", "/opt/mail/mail", &[]);
+        assert_eq!(
+            desktop_entry_status(&desktop_entry(&entry)),
+            AutostartStatus::Enabled
+        );
+
+        // Users may disable autostart by flipping either key.
+        let disabled = desktop_entry(&entry).replace(
+            "X-GNOME-Autostart-enabled=true",
+            "X-GNOME-Autostart-enabled=false",
+        );
+        assert_eq!(
+            desktop_entry_status(&disabled),
+            AutostartStatus::Disabled
+        );
+
+        let hidden = format!("{}\nHidden=true\n", "[Desktop Entry]\nType=Application\n");
+        assert_eq!(desktop_entry_status(&hidden), AutostartStatus::Disabled);
+
+        // Keys in other groups and comments do not count.
+        let other_group = "[Desktop Entry]\nType=Application\n\
+                           [Other]\nHidden=true\n#Hidden=true\n";
+        assert_eq!(
+            desktop_entry_status(other_group),
+            AutostartStatus::Enabled
+        );
     }
 
     #[test]

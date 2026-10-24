@@ -4,7 +4,7 @@ use std::{
     thread::{self, ThreadId},
 };
 
-use crate::{Error, Result, backend::PlatformAutostart};
+use crate::{Error, Result, backend::{self, PlatformAutostart}};
 
 /// The registration settings every platform backend receives.
 #[derive(Clone, Debug)]
@@ -52,6 +52,9 @@ pub struct Autostart {
 struct AutostartInner {
     thread_id: ThreadId,
     config: AutostartConfig,
+    /// The identifier the platform stores the registration under, computed
+    /// once at build time from `config.app_name`.
+    registration_id: String,
     backend: PlatformAutostart,
 }
 
@@ -121,6 +124,7 @@ impl AutostartBuilder {
         Ok(Autostart {
             inner: Rc::new(AutostartInner {
                 thread_id: thread::current().id(),
+                registration_id: backend::registration_id(&app_name),
                 config: AutostartConfig {
                     app_name,
                     exe_path,
@@ -163,6 +167,14 @@ impl Autostart {
     /// See [`AutostartStatus::is_enabled`] for how the platform states map.
     pub fn is_enabled(&self, cx: &mut gpui::App) -> Result<bool> {
         Ok(self.status(cx)?.is_enabled())
+    }
+
+    /// The identifier the platform stores this registration under: the
+    /// `.desktop` file name (without extension) on Linux, the `LaunchAgent`
+    /// label on macOS (`SMAppService` registers the main app bundle and does
+    /// not use it), and the `Run` registry value name on Windows.
+    pub fn registration_id(&self) -> &str {
+        &self.inner.registration_id
     }
 
     fn check_thread(&self) -> Result<()> {
@@ -209,6 +221,25 @@ mod tests {
             std::env::current_exe().unwrap()
         );
         assert!(autostart.inner.config.args.is_empty());
+    }
+
+    #[test]
+    fn test_autostart_registration_id() {
+        // The identifier is sanitized per platform: separators become `-`.
+        let autostart = Autostart::builder().with_app_name("Mail Client").build().unwrap();
+        assert_eq!(autostart.registration_id(), "Mail-Client");
+
+        // Names that need no sanitizing pass through unchanged.
+        let autostart = Autostart::builder()
+            .with_app_name("com.example.Mail")
+            .build()
+            .unwrap();
+        assert_eq!(autostart.registration_id(), "com.example.Mail");
+
+        // An empty identifier falls back to a non-empty default instead of
+        // producing an unusable registration name.
+        let autostart = Autostart::builder().with_app_name("***").build().unwrap();
+        assert!(!autostart.registration_id().is_empty());
     }
 
     #[test]

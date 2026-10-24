@@ -10,6 +10,20 @@ mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
 
+/// The identifier the current platform stores an auto-start registration
+/// under: the `.desktop` file name on Linux, the `LaunchAgent` label on
+/// macOS, and the `Run` registry value name on Windows.
+pub(crate) fn registration_id(app_name: &str) -> String {
+    #[cfg(target_os = "linux")]
+    return linux::registration_id(app_name);
+    #[cfg(target_os = "macos")]
+    return macos::registration_id(app_name);
+    #[cfg(target_os = "windows")]
+    return windows::registration_id(app_name);
+    #[allow(unreachable_code)]
+    app_name.to_owned()
+}
+
 /// Dispatches auto-start operations to the current platform.
 pub(crate) struct PlatformAutostart {
     #[cfg(target_os = "linux")]

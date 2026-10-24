@@ -97,10 +97,10 @@ fn map_service_status(status: SMAppServiceStatus) -> AutostartStatus {
         AutostartStatus::Enabled
     } else if status == SMAppServiceStatus::RequiresApproval {
         AutostartStatus::RequiresApproval
-    } else if status == SMAppServiceStatus::NotRegistered {
-        AutostartStatus::Disabled
     } else {
-        AutostartStatus::Error("SMAppService: the login item was not found".to_owned())
+        // NotRegistered and NotFound both mean the system has no login item
+        // for this application.
+        AutostartStatus::Disabled
     }
 }
 
@@ -168,6 +168,13 @@ fn launch_agent_plist(config: &AutostartConfig) -> String {
          </plist>\n",
         label = escape_xml(&launch_agent_label(&config.app_name)),
     )
+}
+
+/// The identifier this registration is stored under: the `LaunchAgent` label.
+/// `SMAppService` registers the main app bundle and does not use it, but the
+/// same sanitized value is reported so callers get one consistent identifier.
+pub(crate) fn registration_id(app_name: &str) -> String {
+    launch_agent_label(app_name)
 }
 
 /// Sanitizes the application name into a `LaunchAgent` label and file name.
@@ -268,10 +275,10 @@ mod tests {
             map_service_status(SMAppServiceStatus::NotRegistered),
             AutostartStatus::Disabled
         );
-        assert!(matches!(
+        assert_eq!(
             map_service_status(SMAppServiceStatus::NotFound),
-            AutostartStatus::Error(_)
-        ));
+            AutostartStatus::Disabled
+        );
     }
 
     #[test]

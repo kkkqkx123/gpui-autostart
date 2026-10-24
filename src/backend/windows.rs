@@ -120,6 +120,12 @@ fn value_status(key: HKEY, name: &str) -> Result<AutostartStatus> {
     }
 }
 
+/// The identifier this registration is stored under: the `Run` value name,
+/// which is the application name verbatim.
+pub(crate) fn registration_id(app_name: &str) -> String {
+    app_name.to_owned()
+}
+
 /// Builds the command line stored in the `Run` value.
 fn command_line(config: &AutostartConfig) -> String {
     // The executable is always quoted: `Run` values are parsed with the
