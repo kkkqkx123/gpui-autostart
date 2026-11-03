@@ -62,9 +62,9 @@ if !autostart.is_enabled(cx)? {
 一个无窗口的 CLI，用于启用、禁用和查询注册状态：
 
 ```sh
-cargo run --example autostart -- status
-cargo run --example autostart -- enable
-cargo run --example autostart -- disable
+cargo run -p autostart_demo -- status
+cargo run -p autostart_demo -- enable
+cargo run -p autostart_demo -- disable
 ```
 
 ## License

@@ -82,9 +82,9 @@ flavor's `gpui::App`.
 A windowless CLI that enables, disables and reports the registration:
 
 ```sh
-cargo run --example autostart -- status
-cargo run --example autostart -- enable
-cargo run --example autostart -- disable
+cargo run -p autostart_demo -- status
+cargo run -p autostart_demo -- enable
+cargo run -p autostart_demo -- disable
 ```
 
 ## License
