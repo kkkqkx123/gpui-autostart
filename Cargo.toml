@@ -11,6 +11,7 @@ readme = "README.md"
 
 # This crate is an independent repository, not a gpui-kit workspace member.
 [workspace]
+members = ["examples/autostart_demo"]
 
 [features]
 default = ["gpui-kit"]
@@ -48,17 +49,8 @@ windows = { version = "0.62", features = [
 ] }
 
 [dev-dependencies]
-# The example resolves its platform through whichever GPUI flavor is selected.
-gpui-kit = { version = "0.8", default-features = false }
 static_assertions = "1.1"
 tempfile = "3"
-# The `verify` subcommand asserts the platform footprint independently of the
-# library (`anyhow` for its own assertion errors; the raw registry API on
-# Windows to read the `Run` value back).
-anyhow = "1"
-
-[target.'cfg(target_os = "windows")'.dev-dependencies]
-windows = { version = "0.62", features = ["Win32_System_Registry"] }
 
 [lints.rust]
 missing_docs = "warn"

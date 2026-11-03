@@ -1,10 +1,10 @@
 //! A windowless CLI demonstrating `gpui-autostart`.
 //!
 //! ```sh
-//! cargo run --example autostart -- status
-//! cargo run --example autostart -- enable
-//! cargo run --example autostart -- disable
-//! cargo run --example autostart -- verify   # enable → assert → disable, exit 0/1
+//! cargo run -p autostart_demo -- status
+//! cargo run -p autostart_demo -- enable
+//! cargo run -p autostart_demo -- disable
+//! cargo run -p autostart_demo -- verify   # enable → assert → disable, exit 0/1
 //! ```
 //!
 //! `verify` performs the full round trip with *independent* platform
@@ -15,19 +15,10 @@
 //! (there is no file footprint to inspect independently).
 #![allow(missing_docs)]
 
-#[cfg(all(feature = "gpui-kit", not(feature = "gpui")))]
-extern crate gpui_kit as gpui;
-#[cfg(all(feature = "gpui-kit", not(feature = "gpui")))]
 use gpui_kit::platform as gpui_platform;
-
-#[cfg(all(feature = "gpui-ce", not(any(feature = "gpui", feature = "gpui-kit"))))]
-extern crate gpui_ce_backend as gpui;
-#[cfg(all(feature = "gpui-ce", not(any(feature = "gpui", feature = "gpui-kit"))))]
-use gpui_ce_platform as gpui_platform;
-
-use gpui::App;
+use gpui_kit::App;
 use gpui_autostart::Autostart;
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Result, bail};
 
 const APP_NAME: &str = "GPUI Autostart Example";
 
