@@ -143,10 +143,13 @@ fn assert_platform_footprint(exe: &std::path::Path, present: bool) -> Result<()>
                     dir.display()
                 );
             }
-            (false, Some(path)) => {
+            (false, true) => {
                 bail!(
                     "expected no `.desktop` entry after disable, found {}",
-                    path.display()
+                    found
+                        .as_ref()
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_else(|| "none".into())
                 );
             }
             _ => println!(
